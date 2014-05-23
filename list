@@ -1,0 +1,7 @@
+1. neat little tool harlowja made, 
+    o this can copy code u are working on to a remote machine - aka a vm,
+      upload that code to it as a tarball, extract the tarball, then run tox 
+      in that code), it pipes the correct stdout/stderr from the remote tox 
+      run into your local terminal (so it looks like it runs locally),
+      probably useful for praneshp to run code from his mac to say
+https://git.corp.yahoo.com/harlowja/RemoteTox/blob/master/remote_tester
