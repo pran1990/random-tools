@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+set -u
+
+projects="openstack/taskflow"
+projects="$projects stackforge/entropy"
+projects="$projects stackforge/anvil"
+projects="$projects openstack/requirements"
+refresh_rate=300
+
+formatted_projects=""
+for p in $projects; do
+    formatted_projects="$formatted_projects --project $p"
+done
+
+# Trap exit so that we don't leave the terminal in a bad state if we ctrl-c
+# to exit czuul....
+trap "clear" EXIT
+czuul -r "$refresh_rate" $formatted_projects
+exit $?
