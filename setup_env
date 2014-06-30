@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -e
+
+# http://www.unixcl.com/2009/03/print-text-in-style-box-bash-scripting.html
+Box () {
+    str="$@"
+    len=$((${#str}+4))
+    for i in $(seq $len); do echo -n '*'; done;
+    echo; echo "* "$str" *";
+    for i in $(seq $len); do echo -n '*'; done;
+    echo
+}
+
+# Get python 2.7 installed
+PY_FILE="Python-2.7.7.tgz"
+PY_BASE_FILE=${PY_FILE%.*}
+PY_URL="https://www.python.org/ftp/python/2.7.7/$PY_FILE"
+
+Box "Building python 2.7..."
+wget $PY_URL -O "/tmp/$PY_FILE" --no-check-certificate -nv
+cd /tmp
+rm -rf $PY_BASE_FILE
+tar -xf "$PY_FILE"
+cd /tmp/$PY_BASE_FILE
+./configure --disable-ipv6 -q
+make --quiet
+
+Box "Installing python 2.7..."
+make altinstall >/dev/null 2>&1
+
+Box "Installing pip..."
+wget "https://bootstrap.pypa.io/get-pip.py" -O "/tmp/get-pip.py" --no-check-certificate -nv
+/usr/local/bin/python2.7 /tmp/get-pip.py
+
+Box "Installing tox..."
+/usr/local/bin/pip install -q 'tox>=1.6.1,<1.7.0'
+
+Box "Installing system packages..."
+yum install -y -q mysql-devel postgresql-devel
+yum install -y -q mysql-server
+
+Box "Setting up mysql..."
+/etc/init.d/mysqld restart
+/usr/bin/mysql --user="root" --execute='CREATE DATABASE 'openstack_citest''
+
+cat << EOF > /tmp/mysql.sql
+CREATE USER 'openstack_citest'@'localhost' IDENTIFIED BY 'openstack_citest';
+CREATE USER 'openstack_citest' IDENTIFIED BY 'openstack_citest';
+GRANT ALL PRIVILEGES ON *.* TO 'openstack_citest'@'localhost';
+GRANT ALL PRIVILEGES ON *.* TO 'openstack_citest';
+FLUSH PRIVILEGES;
+EOF
+
+/usr/bin/mysql --user="root" < /tmp/mysql.sql
+
+Box "Installing zookeeper..."
+ZK_FILE="cloudera-cdh-4-0.x86_64.rpm"
+ZK_URL="http://archive.cloudera.com/cdh4/one-click-install/redhat/6/x86_64/$ZK_FILE"
+wget $ZK_URL -O /tmp/$ZK_FILE --no-check-certificate -nv
+yum -y -q --nogpgcheck localinstall /tmp/$ZK_FILE
+yum -y -q install zookeeper-server java
+
+Box "Starting zookeeper..."
+/etc/init.d/zookeeper-server init --force
+mkdir -pv /var/lib/zookeeper
+python -c "import random; print random.randint(1, 4096)" > /var/lib/zookeeper/myid
+/etc/init.d/zookeeper-server restart
+/etc/init.d/zookeeper-server status
